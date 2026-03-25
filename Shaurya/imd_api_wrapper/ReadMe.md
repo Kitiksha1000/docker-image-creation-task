@@ -34,9 +34,11 @@ imd_api_wrapper/
 ## File Roles
 
 ### `wrapper/config.py`
+
 **The data layer.** Contains every number from the KCC 15.5M analysis as Python dictionaries. No logic — only reference data.
 
 Stores:
+
 - `ENDPOINTS` — 6 IMD URL slugs
 - `FRESHNESS_MINUTES` — update frequency per endpoint
 - `PRIORITY` — CRITICAL / HIGH / MEDIUM / LOW per endpoint
@@ -52,55 +54,60 @@ Every other file imports from `config.py`. Nothing else.
 ---
 
 ### `wrapper/api_mapping.py`
+
 **The lookup layer.** Provides functions to query the config data in a structured way.
 
-| Function | What it returns |
-|---|---|
-| `get_endpoint_for_cluster(id)` | endpoint, priority, query count for one cluster |
-| `get_endpoint_for_need(name)` | endpoint, priority, coverage % for one farmer need |
-| `get_full_mapping_table()` | all 59 clusters as a list of dicts |
-| `get_need_summary()` | all 6 farmer needs sorted by query volume |
+| Function                       | What it returns                                    |
+| ------------------------------ | -------------------------------------------------- |
+| `get_endpoint_for_cluster(id)` | endpoint, priority, query count for one cluster    |
+| `get_endpoint_for_need(name)`  | endpoint, priority, coverage % for one farmer need |
+| `get_full_mapping_table()`     | all 59 clusters as a list of dicts                 |
+| `get_need_summary()`           | all 6 farmer needs sorted by query volume          |
 
 Used by `api/main.py` to serve the `/analysis/*` routes.
 
 ---
 
 ### `wrapper/client.py`
+
 **The API layer.** Contains `IMDClient` — the class that makes the actual weather data requests. Currently runs in **mock mode**, which generates realistic season-aware responses without needing real credentials.
 
-| Method | Farmer Need | KCC Queries | Priority |
-|---|---|---|---|
-| `get_city_forecast(city, state)` | General Weather Forecast | 13,706,092 | CRITICAL |
-| `get_district_forecast(district, state)` | District Weather Forecast | 1,335,570 | HIGH |
-| `get_rainfall_forecast(district, state, days)` | Rain Forecast | 248,633 | MEDIUM |
-| `get_current_weather(city, state)` | Current Weather Condition | 180,855 | MEDIUM |
-| `get_nowcast(district, state)` | Short Term Forecast | 57,084 | LOW |
-| `get_agromet_advisory(district, state, crop)` | Weather Impact on Crops | 21,655 | LOW |
-| `get_full_profile(city, district, state, crop)` | All 6 at once | 15,549,889 | ALL |
+| Method                                          | Farmer Need               | KCC Queries | Priority |
+| ----------------------------------------------- | ------------------------- | ----------- | -------- |
+| `get_city_forecast(city, state)`                | General Weather Forecast  | 13,706,092  | CRITICAL |
+| `get_district_forecast(district, state)`        | District Weather Forecast | 1,335,570   | HIGH     |
+| `get_rainfall_forecast(district, state, days)`  | Rain Forecast             | 248,633     | MEDIUM   |
+| `get_current_weather(city, state)`              | Current Weather Condition | 180,855     | MEDIUM   |
+| `get_nowcast(district, state)`                  | Short Term Forecast       | 57,084      | LOW      |
+| `get_agromet_advisory(district, state, crop)`   | Weather Impact on Crops   | 21,655      | LOW      |
+| `get_full_profile(city, district, state, crop)` | All 6 at once             | 15,549,889  | ALL      |
 
 Every method returns a normalised response with consistent keys:
+
 ```json
 {
-  "endpoint"         : "city_forecast",
-  "farmer_need"      : "General Weather Forecast",
-  "priority"         : "CRITICAL",
+  "endpoint": "city_forecast",
+  "farmer_need": "General Weather Forecast",
+  "priority": "CRITICAL",
   "freshness_minutes": 360,
-  "temperature_c"    : 35.9,
-  "rainfall_mm"      : 3.8,
-  "humidity_pct"     : 37.1,
-  "wind_speed_kmh"   : 12.6,
-  "alert_type"       : null,
-  "condition"        : "Cloudy",
-  "raw"              : {}
+  "temperature_c": 35.9,
+  "rainfall_mm": 3.8,
+  "humidity_pct": 37.1,
+  "wind_speed_kmh": 12.6,
+  "alert_type": null,
+  "condition": "Cloudy",
+  "raw": {}
 }
 ```
 
 ---
 
 ### `wrapper/router.py`
+
 **The routing layer.** Takes raw farmer query text and returns which IMD endpoint should answer it. Uses keyword matching in priority order — the same logic used to build the 59 KCC clusters.
 
 Matching order (first match wins):
+
 1. Weather Impact on Crops — `crop loss`, `frost`, `hailstorm`, `irrigation`
 2. Short Term Forecast — `next 3 days`, `next 5 days`, `coming days`
 3. Current Weather Condition — `current weather`, `today weather`, `weather now`
@@ -116,11 +123,13 @@ route_query("will it rain tomorrow in my district")
 ---
 
 ### `wrapper/__init__.py`
+
 **Package exports.** Re-exports the most commonly used symbols so other code can write `from wrapper import IMDClient` instead of `from wrapper.client import IMDClient`.
 
 ---
 
 ### `api/main.py`
+
 **The FastAPI application.** Exposes 15 routes across 4 groups. Each route receives a request, calls the appropriate wrapper function, and returns JSON.
 
 ```
@@ -150,21 +159,25 @@ Each route description includes the exact KCC cluster IDs and query counts.
 ---
 
 ### `api/__init__.py`
+
 Empty file. Required by Python to treat `api/` as a package so `api.main` can be imported by uvicorn.
 
 ---
 
 ### `app.py`
+
 Direct usage without starting a server. Import `IMDClient` and call methods directly from a Jupyter notebook. Useful for quick testing without the FastAPI overhead.
 
 ---
 
 ### `run_api.py`
+
 Jupyter notebook cells for starting, testing, and stopping the FastAPI server from inside JupyterHub.
 
 ---
 
 ### `requirements.txt`
+
 ```
 fastapi>=0.110.0
 uvicorn>=0.29.0
@@ -175,18 +188,38 @@ matplotlib>=3.7.0
 
 ---
 
+## 🐳 Containerization & Deployment
+
+This repository is fully containerized using Docker. A CI/CD pipeline is configured via GitHub Actions to automatically build and push the image to Docker Hub on every update to the task branch.
+
+### Running Locally with Docker
+
+To build and run the IMD Weather API Wrapper locally:
+
+1. **Build the image:**
+   ```bash
+   docker build -t imd-api-wrapper -f Shaurya/imd_api_wrapper/Dockerfile ./Shaurya
+   ```
+
 ## KCC Analysis — Why These 6 Endpoints
+
+2. **Run the container:**
+   ```bash
+   docker run -p 8000:8000 imd-api-wrapper
+   ```
+3. **Access the API:**
+   Open http://localhost:8000/docs in your browser.
 
 The 6 endpoints were selected by clustering 15,549,889 farmer weather queries from the KCC dataset into 59 groups using TF-IDF vectorisation and MiniBatch K-Means, then grouping those clusters by semantic meaning.
 
-| Endpoint | Clusters | Queries | Coverage |
-|---|---|---|---|
-| `city-forecast` | 3,18,28,27,58,10,15,14,30,13,47 | 13,706,092 | 88.14% |
-| `district-forecast` | 54,36,41,8,9,12,40,52,17,7,26,1,53,32,22,45,48,56,0,6,33,37,50,31,39,21,25,46,55,49,44,57,34,38,43,16 | 1,335,570 | 8.59% |
-| `rainfall-forecast` | 20,2,4,42,19 | 248,633 | 1.60% |
-| `current` | 35,29,11 | 180,855 | 1.16% |
-| `nowcast` | 24,23 | 57,084 | 0.37% |
-| `agromet-advisory` | 5,51 | 21,655 | 0.14% |
+| Endpoint            | Clusters                                                                                              | Queries    | Coverage |
+| ------------------- | ----------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| `city-forecast`     | 3,18,28,27,58,10,15,14,30,13,47                                                                       | 13,706,092 | 88.14%   |
+| `district-forecast` | 54,36,41,8,9,12,40,52,17,7,26,1,53,32,22,45,48,56,0,6,33,37,50,31,39,21,25,46,55,49,44,57,34,38,43,16 | 1,335,570  | 8.59%    |
+| `rainfall-forecast` | 20,2,4,42,19                                                                                          | 248,633    | 1.60%    |
+| `current`           | 35,29,11                                                                                              | 180,855    | 1.16%    |
+| `nowcast`           | 24,23                                                                                                 | 57,084     | 0.37%    |
+| `agromet-advisory`  | 5,51                                                                                                  | 21,655     | 0.14%    |
 
 ---
 
@@ -219,6 +252,7 @@ print(f"Docs    : http://127.0.0.1:{PORT}/docs")
 ```
 
 To stop:
+
 ```python
 server.terminate()
 log.close()
@@ -255,6 +289,7 @@ USE_MOCK = False                          # switch to live mode
 In the same file `wrapper/client.py`, find the `_fetch()` function.
 
 Delete this block:
+
 ```python
 if USE_MOCK:
     logger.info("[MOCK] %s params=%s", endpoint_key, params)
@@ -263,6 +298,7 @@ if USE_MOCK:
 ```
 
 Uncomment this block (remove the `#` characters):
+
 ```python
 # import requests
 # url     = BASE_URL.rstrip("/") + ENDPOINTS[endpoint_key]
@@ -339,9 +375,9 @@ Farmer Query Text
 
 The 59 clusters were validated using:
 
-| Metric | Value | Interpretation |
-|---|---|---|
-| Silhouette Score | ~0.32 | Acceptable separation for large-scale text clustering |
-| Davies-Bouldin Index | ~1.18 | Acceptable cluster compactness |
-| Total queries covered | 15,549,889 | 100% — no data loss |
-| Clusters | 59 |
+| Metric                | Value      | Interpretation                                        |
+| --------------------- | ---------- | ----------------------------------------------------- |
+| Silhouette Score      | ~0.32      | Acceptable separation for large-scale text clustering |
+| Davies-Bouldin Index  | ~1.18      | Acceptable cluster compactness                        |
+| Total queries covered | 15,549,889 | 100% — no data loss                                   |
+| Clusters              | 59         |

@@ -1,21 +1,15 @@
-# 1. Use a lightweight Python version
 FROM python:3.10-slim
-
-# 2. Set the working directory inside the container
 WORKDIR /app
 
-# 3. Copy only the requirements first (this makes rebuilding faster)
-COPY requirements.txt .
+# UPDATE THIS: Tell it to look in the subfolder
+COPY imd_api_wrapper/requirements.txt .
 
-# 4. Install the libraries Shaurya used for the API
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy all the code from your local folder into the container
-COPY . .
+# UPDATE THIS: Copy the rest of the API code from that folder
+COPY imd_api_wrapper/ .
 
-# 6. Tell Docker which port the API will use (Usually 8000 for FastAPI/Flask)
 EXPOSE 8000
 
-# 7. The command to start the API
+# Ensure this points to the correct location of your app inside the container
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-CMD ["python", "run_api.py"]

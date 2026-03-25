@@ -28,9 +28,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          # CRITICAL: Since you are at the root, we tell Docker
-          # that the "ingredients" are inside the Shaurya/imd_api_wrapper folder
           context: ./Shaurya
           file: ./Shaurya/imd_api_wrapper/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/imd-api-wrapper:kitiksha-v1
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/imd-api-wrapper:kitiksha-v1
+            ${{ secrets.DOCKER_USERNAME }}/imd-api-wrapper:latest
